@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#Show sequece of number to from 1 to 100
+#if number is module 5 and 3 print FizzBuzz
+#if number is module 5 print Fizz
+#if number is module 3 print Buzz
+for I in {1..100};do
+    if (( ("$I"%15) == 0 ));then
+	echo "FizzBuzz"
+    elif (( ("$I"%3) == 0 ));then
+        echo "Fizz"
+    elif (( ("$I"%5) == 0 ));then
+        echo "Buzz"
+    else
+	echo $I
+    fi
+done
