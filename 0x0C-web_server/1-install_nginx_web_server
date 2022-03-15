@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-#Install ngnix in the web server
-sudo apt-get update
-sudo apt-get -y install nginx
-echo "Hello World!" | sudo tee /var/www/html/index.html
-sudo service nginx restart
+# Installs Nginx with the following requirements:
+#+    Listens on port 80.
+#+    Returns a page containing "Holberton School" when queried
+#++    at the root with a curl GET request.
+
+apt-get -y update
+apt-get -y install nginx
+
+echo 'Holberton School for the win!' > /var/www/html/index.html
+
+service nginx restart
