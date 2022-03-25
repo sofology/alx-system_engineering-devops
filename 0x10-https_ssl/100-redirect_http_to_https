@@ -2,18 +2,23 @@ global
         log /dev/log    local0
         log /dev/log    local1 notice
         chroot /var/lib/haproxy
-        stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+        stats socket /run/haproxy/admin.sock mode 660 level admin
         stats timeout 30s
         user haproxy
         group haproxy
         daemon
+        maxconn 2048
+        tune.ssl.default-dh-param 2048
 
+        # Default SSL material locations
         ca-base /etc/ssl/certs
         crt-base /etc/ssl/private
 
-        ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AE\
-S128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS
-        ssl-default-bind-options no-sslv3
+        # Default ciphers to use on SSL-enabled listening sockets.
+        # For more information, see ciphers(1SSL). This list is from:
+        #  https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
+        ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS
+        ssl-default-bind-options no-sslv3#!/usr/bin/env bash
 
 defaults
         log     global
@@ -30,29 +35,26 @@ defaults
         errorfile 502 /etc/haproxy/errors/502.http
         errorfile 503 /etc/haproxy/errors/503.http
         errorfile 504 /etc/haproxy/errors/504.http
+        option forwardfor
+        option http-server-close
 
-frontend load_balancer
-        # set to listen for HTTP traffic on port 80
+frontend www-http
         bind *:80
+        reqadd X-Forwarded-Proto:\ http
+	redirect scheme https 301 if !{ ssl_fc }
+        default_backend www-backend
 
-        # listen for HTTPS traffic on port 443, accept SSL traffic
-        # HTTPS traffic is decrypted using the file huy75.tech.pem
-        # which contains both the sites public & private SSL certificates
-        # The ssl parameter enables SSL termination
-        # The crt parameter identifies the location of SSL certificates
-        bind *:443 ssl crt /etc/haproxy/certs/sofology.tech.pem
+frontend www-https
+        bind *:443 ssl crt /etc/haproxy/certs/
+        reqadd X-Forwarded-Proto:\ https
+        acl letsencrypt-acl path_beg /.well-known/acme-challenge/
+        use_backend letsencrypt-backend if letsencrypt-acl
+        default_backend www-backend
 
-        # redirect any traffic received at HTTP port 80 to HTTPS port 443
-        # unless means unless the traffic is received on port 443
-        # req: HAproxy should return a 301 Moved Permanently
-        # The 301 redirect is considered a best practice for
-        # upgrading users from HTTP to HTTPS
-        http-request redirect scheme https code 301 unless { ssl_fc }
-        mode http
-        default_backend servers
+backend www-backend
+        redirect scheme https if !{ ssl_fc }
+        server 1454-web-01 34.148.181.190:80 check
+	server 1454-web-02 3.237.33.19:80 check
 
-backend servers
-        mode http
-        balance roundrobin
-        server web-01 34.148.181.190:80 check
-        server web-02 3.237.33.19:80 check
+backend letsencrypt-backend
+        server letsencrypt 127.0.0.1:54321
