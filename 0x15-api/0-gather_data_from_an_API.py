@@ -1,35 +1,30 @@
 #!/usr/bin/python3
+"""For a given employee ID, returns information about
+their TODO list progress"""
 
-"""Module using REST API return information TODO list progress
-given employed ID"""
-
-import json
 import requests
 import sys
 
+if __name__ == "__main__":
 
+    userId = sys.argv[1]
+    user = requests.get("https://jsonplaceholder.typicode.com/users/{}"
+                        .format(userId))
 
-if __name__ == '__main__':
+    name = user.json().get('name')
 
-    url = requests.get(
-        'https://jsonplaceholder.typicode.com/users/{}'.format(sys.argv[1]))
-    res = url.json()
+    todos = requests.get('https://jsonplaceholder.typicode.com/todos')
+    totalTasks = 0
+    completed = 0
 
-    todo_list = requests.get(
-        'https://jsonplaceholder.typicode.com/todos?userId={}'.
-        format(sys.argv[1]))
-    res2 = todo_list.json()
+    for task in todos.json():
+        if task.get('userId') == int(userId):
+            totalTasks += 1
+            if task.get('completed'):
+                completed += 1
 
-    todo_len = len(res2)
+    print('Employee {} is done with tasks({}/{}):'
+          .format(name, completed, totalTasks))
 
-    complete_true = 0
-    for todo in res2:
-        if todo.get('completed'):
-            complete_true += 1
-
-    name_employe = res['name']
-    print("Employee {} is done with({}/{}):".format(
-        name_employe, complete_true, todo_len))
-    for str_title in res2:
-        if str_title.get('completed'):
-            print('\t {}'.format(str_title['title']))
+    print('\n'.join(["\t " + task.get('title') for task in todos.json()
+          if task.get('userId') == int(userId) and task.get('completed')]))
