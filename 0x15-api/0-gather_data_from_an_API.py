@@ -3,10 +3,10 @@
 """Module using REST API return information TODO list progress
 given employed ID"""
 
-
+import json
 import requests
 import sys
-import json
+
 
 
 if __name__ == '__main__':
